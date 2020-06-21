@@ -5,7 +5,7 @@ import axios from 'axios';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 
-axios.defaults.baseURL = 'https://chouhanaryan.pythonanywhere.com/';
+axios.defaults.baseURL = 'http://imweb.ap-south-1.elasticbeanstalk.com/';
 
 // Add a request interceptor
 axios.interceptors.request.use(
