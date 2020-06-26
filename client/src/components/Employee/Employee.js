@@ -12,6 +12,8 @@ import {
   Fab,
   IconButton,
   Hidden,
+  TablePagination,
+  Box,
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import EditIcon from '@material-ui/icons/Edit';
@@ -87,6 +89,74 @@ export default function Employee() {
   const [open, setOpen] = useState(false);
   // row to be selected on clicking the delete icon
   const [selectedRow, setSelectedRow] = useState({});
+  // pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [count, setCount] = useState(0);
+
+  const history = useHistory();
+
+  const { setSnack } = useContext(SnackContext);
+
+  const handleChangePage = async (event, newPage) => {
+    try {
+      setIsLoading(true);
+      setPage(newPage);
+      const response = await getEndPoint(
+        `/auth/users/?limit=${rowsPerPage}&offset=${newPage * rowsPerPage}`,
+        null,
+        history
+      );
+      const { data } = response;
+      setCount(data.count);
+      // map genders got from API
+      const genderMapper = { M: 'Male', F: 'Female', Other: 'Other' };
+      const list = data.results.map(val => ({
+        firstName: val.first_name,
+        lastName: val.last_name,
+        name: `${val.first_name} ${val.last_name}`,
+        age: val.age,
+        gender: genderMapper[val.gender],
+        email: val.email,
+        isStaff: val.is_staff,
+      }));
+      setEmployeeList(list);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const handleChangeRowsPerPage = async event => {
+    try {
+      setIsLoading(true);
+      setPage(0);
+      setRowsPerPage(+event.target.value);
+
+      const response = await getEndPoint(
+        `/auth/users/?limit=${+event.target.value}&offset=0`,
+        null,
+        history
+      );
+      const { data } = response;
+      setCount(data.count);
+      // map genders got from API
+      const genderMapper = { M: 'Male', F: 'Female', Other: 'Other' };
+      const list = data.results.map(val => ({
+        firstName: val.first_name,
+        lastName: val.last_name,
+        name: `${val.first_name} ${val.last_name}`,
+        age: val.age,
+        gender: genderMapper[val.gender],
+        email: val.email,
+        isStaff: val.is_staff,
+      }));
+      setEmployeeList(list);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -96,22 +166,26 @@ export default function Employee() {
     setOpen(false);
   };
 
-  const history = useHistory();
-
-  const { setSnack } = useContext(SnackContext);
-
   const apiFetch = async () => {
     try {
       setIsLoading(true);
-      const response = await getEndPoint('/auth/users/', null, history);
+      const response = await getEndPoint(
+        '/auth/users/?limit=10&offset=0',
+        null,
+        history
+      );
       const { data } = response;
+      setCount(data.count);
       // map genders got from API
       const genderMapper = { M: 'Male', F: 'Female', Other: 'Other' };
-      const list = data.map(val => ({
+      const list = data.results.map(val => ({
+        firstName: val.first_name,
+        lastName: val.last_name,
         name: `${val.first_name} ${val.last_name}`,
         age: val.age,
         gender: genderMapper[val.gender],
         email: val.email,
+        isStaff: val.is_staff,
       }));
       setEmployeeList(list);
       setIsLoading(false);
@@ -136,8 +210,14 @@ export default function Employee() {
   // handle user edit
   const handleEdit = row => {
     console.log(row);
-    // TODO implement this when endpoint is ready
     // open the create user form and pass the data as props
+    history.push('/updateemployee', {
+      firstName: row.firstName,
+      lastName: row.lastName,
+      age: row.age,
+      isStaff: row.isStaff,
+      email: row.email,
+    });
   };
 
   // handle user delete
@@ -226,6 +306,16 @@ export default function Employee() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10]}
+          component='div'
+          count={count}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onChangePage={handleChangePage}
+          onChangeRowsPerPage={handleChangeRowsPerPage}
+        />
+        <Box m={10} />
       </Paper>
 
       <DialogBox

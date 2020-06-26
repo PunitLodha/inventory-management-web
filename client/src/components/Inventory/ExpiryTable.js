@@ -8,6 +8,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
 } from '@material-ui/core';
 import { useHistory } from 'react-router-dom';
 import Spinner from '../Spinner';
@@ -54,16 +55,74 @@ export default function ExpiryTable() {
   const [expiryList, setExpiryList] = useState([]);
   // true when waiting for an response from API
   const [isLoading, setIsLoading] = useState(false);
+  // pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [count, setCount] = useState(0);
 
   const history = useHistory();
+
+  const handleChangePage = async (event, newPage) => {
+    try {
+      setIsLoading(true);
+      setPage(newPage);
+      const response = await getEndPoint(
+        `/api/explist/?limit=${rowsPerPage}&offset=${newPage * rowsPerPage}`,
+        null,
+        history
+      );
+      const { data } = response;
+      setCount(data.count);
+      console.log(data);
+      const list = data.results.map(val => ({
+        name: val.Product,
+        quantity: val['No. of items'],
+        daysLeft: val['Days left'],
+      }));
+      setExpiryList(list);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const handleChangeRowsPerPage = async event => {
+    try {
+      setIsLoading(true);
+      setPage(0);
+      setRowsPerPage(+event.target.value);
+      const response = await getEndPoint(
+        `/api/explist/?limit=${+event.target.value}&offset=0`,
+        null,
+        history
+      );
+      const { data } = response;
+      setCount(data.count);
+      console.log(data);
+      const list = data.results.map(val => ({
+        name: val.Product,
+        quantity: val['No. of items'],
+        daysLeft: val['Days left'],
+      }));
+      setExpiryList(list);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const apiFetch = async () => {
     try {
       setIsLoading(true);
-      const response = await getEndPoint('/api/explist/', null, history);
+      const response = await getEndPoint(
+        '/api/explist/?limit=10&offset=0',
+        null,
+        history
+      );
       const { data } = response;
+      setCount(data.count);
       console.log(data);
-      const list = data.map(val => ({
+      const list = data.results.map(val => ({
         name: val.Product,
         quantity: val['No. of items'],
         daysLeft: val['Days left'],
@@ -107,6 +166,15 @@ export default function ExpiryTable() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10]}
+          component='div'
+          count={count}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onChangePage={handleChangePage}
+          onChangeRowsPerPage={handleChangeRowsPerPage}
+        />
       </Paper>
     </>
   );

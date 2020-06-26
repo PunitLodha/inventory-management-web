@@ -2,12 +2,15 @@ import { useState, useEffect, useContext } from 'react';
 import { useHistory } from 'react-router-dom';
 import { SnackContext } from '../SnackBar/SnackContext';
 import { getEndPoint, postEndPoint } from '../UtilityFunctions/Request';
+import { ExpiryListContext } from '../ExpiryListContext';
 
 const useForm = type => {
   // list of all products got from API
-  const [productsList, setProductsList] = useState([]);
+  const [productsList, setProductsList] = useState([[]]);
   // true when waiting for an response from API
   const [isLoading, setIsLoading] = useState(false);
+
+  const { setUpdate } = useContext(ExpiryListContext);
 
   // function to validate inputs, returns the error statements
   const validateInputs = values => {
@@ -80,32 +83,6 @@ const useForm = type => {
   ]);
 
   const history = useHistory();
-
-  // fetch the products list from API
-  const apiFetch = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getEndPoint('/api/productlist/', null, history);
-      const { data } = response;
-      const list = data.map(val => ({
-        name: val.name,
-        quantity: val.quantity,
-        price: val.latest_selling_price,
-        id: val.id,
-        upperLimit: val.upper_limit,
-        lowerLimit: val.lower_limit,
-      }));
-      setProductsList(list);
-      setIsLoading(false);
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  useEffect(() => {
-    apiFetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const { setSnack } = useContext(SnackContext);
   // post data to API
@@ -194,6 +171,7 @@ const useForm = type => {
         // post data to server
         console.log(...formData);
         apiPost(formData);
+        setUpdate(prevState => !prevState);
       });
       setIsSubmitting(false);
       // reset inputs
@@ -334,6 +312,37 @@ const useForm = type => {
       ...prevState,
       'Select a product to view details',
     ]);
+    setProductsList(prevState => [...prevState, []]);
+  };
+
+  const handleSearch = async (event, newValue, index) => {
+    try {
+      const response = await getEndPoint(
+        `/api/productlist/?limit=10&offset=0&search=${newValue}`,
+        null,
+        history
+      );
+      const { data } = response;
+      const list = data.results.map(val => ({
+        name: val.name,
+        quantity: val.quantity,
+        price: val.latest_selling_price,
+        id: val.id,
+        upperLimit: val.upper_limit,
+        lowerLimit: val.lower_limit,
+      }));
+      setProductsList(prevState => {
+        const temp = [...prevState];
+        let val = list;
+        if (newValue === '') {
+          val = [];
+        }
+        temp[index] = val;
+        return temp;
+      });
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return {
@@ -346,6 +355,7 @@ const useForm = type => {
     handleProductChange,
     productDetails,
     isLoading,
+    handleSearch,
   };
 };
 
