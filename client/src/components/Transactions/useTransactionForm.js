@@ -13,30 +13,52 @@ const useForm = type => {
   const { setUpdate } = useContext(ExpiryListContext);
 
   // function to validate inputs, returns the error statements
-  const validateInputs = values => {
+  const validateInputs = (values, customer) => {
     let errors = [];
-    for (let i = 0; i < values.length; i += 1) {
+    for (let i = 0; i < values.length + customer.length; i += 1) {
       errors = [
         ...errors,
-        { product: ' ', quantity: ' ', price: ' ', expiryDate: ' ' },
+        {
+          product: ' ',
+          quantity: ' ',
+          price: ' ',
+          expiryDate: ' ',
+          customerName: ' ',
+          customerPhone: ' ',
+          customerAddress: ' ',
+        },
       ];
     }
+
+    // Error messages for customer related inputs
+    let nameErr = ' ';
+    let phoneErr = ' ';
+    const addressErr = ' ';
+
+    if (customer.customerName === '') {
+      nameErr = 'Please fill out this field';
+    }
+    if (customer.customerPhone === '0') {
+      phoneErr = 'Phone cannot be 0';
+    }
+
     values.forEach((value, index) => {
       let productErr = ' ';
       let quantityErr = ' ';
       let priceErr = ' ';
       const expiryErr = ' ';
 
-      if (type === 'Sell' && value.productName) {
-        const { quantity } = productsList.find(
-          product => product.name === value.productName
+      if (type === 'Sell' && value.name) {
+        const { quantity } = productsList[index].find(
+          product => product.name === value.name
         );
+        console.log(quantity, value.quantity);
         if (Number(value.quantity) > Number(quantity)) {
           quantityErr = `Quantity cannot be greater than current stock : - ${quantity}`;
         }
       }
 
-      if (value.productName === '') {
+      if (value.name === '') {
         productErr = 'Please fill out this field';
       }
 
@@ -57,15 +79,25 @@ const useForm = type => {
         quantity: quantityErr,
         price: priceErr,
         expiryDate: expiryErr,
+        customerName: nameErr,
+        customerPhone: phoneErr,
+        customerAddress: addressErr,
       };
     });
     return errors;
   };
 
+  const [customer, setCustomer] = useState([
+    {
+      customerName: '',
+      customerPhone: '',
+      customerAddress: '',
+    },
+  ]);
   // values for product name, quantity and price
   const [values, setValues] = useState([
     {
-      productName: '',
+      name: '',
       quantity: '',
       price: '',
       expiryDate: '',
@@ -73,7 +105,15 @@ const useForm = type => {
   ]);
   // error messages to be added to the inputs
   const [error, setError] = useState([
-    { product: ' ', quantity: ' ', price: ' ', expiryDate: ' ' },
+    {
+      product: ' ',
+      quantity: ' ',
+      price: ' ',
+      expiryDate: ' ',
+      customerAddress: ' ',
+      customerPhone: ' ',
+      customerName: ' ',
+    },
   ]);
   // true only if submit button is pressed
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +131,23 @@ const useForm = type => {
     const products = [];
     try {
       if (type === 'Buy') {
+        const billData = {
+          name: customer[0].customerName,
+          phone: customer[0].customerPhone,
+          address: customer[0].customerAddress,
+          in_or_out: 'In',
+          order: { ...values },
+        };
+        // console.log(billData,"Bill data for post req")
+        const response1 = await postEndPoint(
+          '/api/order/',
+          billData,
+          null,
+          history
+        );
+        const billBuy = response1.data;
+        console.log('Billing response', billBuy);
+
         const response = await postEndPoint(
           '/api/buy/',
           formData,
@@ -103,6 +160,22 @@ const useForm = type => {
           products.push(data);
         }
       } else {
+        const billData = {
+          name: customer[0].customerName,
+          phone: customer[0].customerPhone,
+          address: customer[0].customerAddress,
+          in_or_out: 'Out',
+          order: { ...values },
+        };
+        // console.log(billData,"Bill data for post req")
+        const response1 = await postEndPoint(
+          '/api/order/',
+          billData,
+          null,
+          history
+        );
+        const billSell = response1.data;
+        console.log('Billing response', billSell);
         const response = await postEndPoint(
           '/api/sell/',
           formData,
@@ -112,6 +185,7 @@ const useForm = type => {
         const { data } = response;
         console.log('Here is response', data);
       }
+
       setIsLoading(false);
       if (products.length) {
         // add success snackbar if new product created
@@ -155,27 +229,36 @@ const useForm = type => {
 
   useEffect(() => {
     const noErr = error.every(val => Object.values(val).every(v => v === ' '));
+
     // only runs if there are no errors and submit button is pressed
     // isSubmitting is used to avoid running on initial render
     if (noErr && isSubmitting) {
       values.forEach(val => {
         const formData = new FormData();
-        formData.append('name', val.productName);
+        // formData.append("Customer Name", customer[0].customerName)
+        // formData.append("Customer Phone", customer[0].customerPhone)
+        // formData.append("Customer Address", customer[0].customerAddress)
+        formData.append('name', val.name);
         formData.append('quantity', val.quantity);
         formData.append('expiry', val.expiryDate);
+
         if (type === 'Buy') {
           formData.append('avg_cost_price', val.price);
         } else {
           formData.append('latest_selling_price', val.price);
         }
         // post data to server
-        console.log(...formData);
+
         apiPost(formData);
         setUpdate(prevState => !prevState);
       });
+
       setIsSubmitting(false);
       // reset inputs
-      setValues([{ productName: '', quantity: '', price: '', expiryDate: '' }]);
+      setValues([{ name: '', quantity: '', price: '', expiryDate: '' }]);
+      setCustomer([
+        { customerAddress: ' ', customerPhone: ' ', customerName: ' ' },
+      ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, isSubmitting]);
@@ -184,9 +267,9 @@ const useForm = type => {
     const newProductDetails = [];
     values.forEach((value, index) => {
       let newDetails = 'Select a product to view details';
-      if (value.productName !== '') {
-        const currProduct = productsList.find(
-          product => product.name === value.productName
+      if (value.name !== '') {
+        const currProduct = productsList[index].find(
+          product => product.name === value.name
         );
         if (currProduct) {
           if (type === 'Buy') {
@@ -214,7 +297,9 @@ const useForm = type => {
   // function to handle submit
   const handleSubmit = event => {
     event.preventDefault();
-    setError(validateInputs(values));
+
+    setError(validateInputs(values, customer[0]));
+
     setIsSubmitting(true);
   };
 
@@ -232,6 +317,19 @@ const useForm = type => {
     });
   };
 
+  const handleChangeCustomer = (event, index) => {
+    // Use event.persist() to stop event pooling done by react
+    event.persist();
+    setCustomer(prevState => {
+      const temp = [...prevState];
+      temp[index] = {
+        ...temp[index],
+        [event.target.name]: event.target.value,
+      };
+      return temp;
+    });
+  };
+
   const handleProductChange = (event, newValue, index) => {
     if (type === 'Buy') {
       if (newValue && newValue.inputValue) {
@@ -239,7 +337,7 @@ const useForm = type => {
           const temp = [...prevState];
           temp[index] = {
             ...temp[index],
-            productName: newValue.inputValue,
+            name: newValue.inputValue,
           };
           return temp;
         });
@@ -259,7 +357,7 @@ const useForm = type => {
         }
         temp[index] = {
           ...temp[index],
-          productName: val,
+          name: val,
         };
         return temp;
       });
@@ -276,7 +374,7 @@ const useForm = type => {
         const temp = [...prevState];
         temp[index] = {
           ...temp[index],
-          productName: val,
+          name: val,
         };
         return temp;
       });
@@ -284,8 +382,8 @@ const useForm = type => {
       // on sell form if product name is updated then update the price
       // according to the products list from API
       const matchedProduct =
-        productsList.find(product => product.name === val) || {};
-
+        productsList[index].find(product => product.name === val) || {};
+      console.log(matchedProduct);
       setValues(prevState => {
         const temp = [...prevState];
         temp[index] = {
@@ -302,7 +400,7 @@ const useForm = type => {
   const handleAddProduct = () => {
     setValues(prevState => [
       ...prevState,
-      { productName: '', quantity: '', price: '', expiryDate: '' },
+      { name: '', quantity: '', price: '', expiryDate: '' },
     ]);
     setError(prevState => [
       ...prevState,
@@ -346,6 +444,7 @@ const useForm = type => {
   };
 
   return {
+    customer,
     values,
     error,
     handleChange,
@@ -356,6 +455,7 @@ const useForm = type => {
     productDetails,
     isLoading,
     handleSearch,
+    handleChangeCustomer,
   };
 };
 

@@ -113,6 +113,7 @@ const Form = ({ type }) => {
 
   // Use custom hook for form state management
   const {
+    customer,
     values,
     error,
     handleChange,
@@ -123,6 +124,7 @@ const Form = ({ type }) => {
     productDetails,
     isLoading,
     handleSearch,
+    handleChangeCustomer,
   } = useForm(type);
 
   return (
@@ -139,6 +141,66 @@ const Form = ({ type }) => {
             autoComplete='off'
             className={classes.gridContainer}
           >
+            {customer.map((value, index) => (
+              <>
+                <Divider />
+                <Typography variant='h5' className={classes.formHeading}>
+                  Customer {values.length > 1 ? index + 1 : ''}
+                </Typography>
+                <div className={classes.form}>
+                  <TextField
+                    required
+                    variant='filled'
+                    id='customerName'
+                    name='customerName'
+                    type='text'
+                    label='Name'
+                    InputProps={{
+                      inputProps: {
+                        min: 0,
+                      },
+                    }}
+                    value={customer.customerName}
+                    onChange={event => handleChangeCustomer(event, index)}
+                    error={!(error[index].customerName === ' ')}
+                    helperText={error[index].customerName}
+                  />
+                  <TextField
+                    variant='filled'
+                    id='phone-input'
+                    name='customerPhone'
+                    type='number'
+                    label='Phone Number'
+                    InputProps={{
+                      inputProps: {
+                        min: 0,
+                      },
+                    }}
+                    value={customer.customerPhone}
+                    onChange={event => handleChangeCustomer(event, index)}
+                    error={!(error[index].customerPhone === ' ')}
+                    helperText={error[index].customerPhone}
+                  />
+                  <TextField
+                    variant='filled'
+                    id='address-input'
+                    name='customerAddress'
+                    type='text'
+                    label='Address'
+                    InputProps={{
+                      inputProps: {
+                        min: 0,
+                      },
+                    }}
+                    value={customer.customerAddress}
+                    onChange={event => handleChangeCustomer(event, index)}
+                    error={!(error[index].customerAddress === ' ')}
+                    helperText={error[index].customerAddress}
+                  />
+                </div>
+              </>
+            ))}
+
             {/* Map over all the values in state to render an input for each one of them */}
             {values.map((value, index) => (
               <>
